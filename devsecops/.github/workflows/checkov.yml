@@ -1,10 +1,12 @@
 name: Terraform Security Scan
 
 on:
-  pull_request:
   push:
     branches:
       - main
+
+permissions:
+  contents: read
 
 jobs:
   checkov:
@@ -16,6 +18,3 @@ jobs:
 
       - name: Run Checkov Scan
         uses: bridgecrewio/checkov-action@master
-        with:
-          directory: .
-          framework: terraform
