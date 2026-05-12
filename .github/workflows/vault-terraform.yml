@@ -31,7 +31,7 @@ jobs:
           echo "ARM_TENANT_ID=$(jq -r '.data.tenant_id' creds.json)" >> $GITHUB_ENV
         env:
           VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+          
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
