@@ -2,6 +2,7 @@ name: Vault Terraform Azure Demo
 
 on:
   push:
+  pull_request:
 
 permissions:
   id-token: write
@@ -12,16 +13,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Vault
+      - name: Authenticate to Vault using GitHub OIDC
+        uses: hashicorp/vault-action@v2
+        with:
+          url: http://20.235.72.161:8200
+          method: jwt
+          role: github-actions-role
+          exportToken: true
+
+      - name: Install Vault CLI
         run: |
           wget https://releases.hashicorp.com/vault/1.17.2/vault_1.17.2_linux_amd64.zip
           unzip vault_1.17.2_linux_amd64.zip
           sudo mv vault /usr/local/bin/
 
-      - name: Get Dynamic Azure Credentials
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Get Dynamic Azure Credentials from Vault
         run: |
           vault read -format=json azure/creds/terraform-role > creds.json
 
@@ -30,16 +42,19 @@ jobs:
           echo "ARM_SUBSCRIPTION_ID=$(jq -r '.data.subscription_id' creds.json)" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=$(jq -r '.data.tenant_id' creds.json)" >> $GITHUB_ENV
         env:
-          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
-          
+          VAULT_ADDR: http://20.235.72.161:8200
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init
         working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
         working-directory: terraform
+        run: terraform apply -auto-approve
