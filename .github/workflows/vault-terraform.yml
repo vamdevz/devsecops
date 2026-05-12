@@ -1,0 +1,44 @@
+name: Vault Terraform Azure Demo
+
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Vault
+        run: |
+          wget https://releases.hashicorp.com/vault/1.17.2/vault_1.17.2_linux_amd64.zip
+          unzip vault_1.17.2_linux_amd64.zip
+          sudo mv vault /usr/local/bin/
+
+      - name: Get Dynamic Azure Credentials
+        run: |
+          vault read -format=json azure/creds/terraform-role > creds.json
+
+          echo "ARM_CLIENT_ID=$(jq -r '.data.client_id' creds.json)" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=$(jq -r '.data.client_secret' creds.json)" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=$(jq -r '.data.subscription_id' creds.json)" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=$(jq -r '.data.tenant_id' creds.json)" >> $GITHUB_ENV
+        env:
+          VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: terraform
